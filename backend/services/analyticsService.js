@@ -88,7 +88,7 @@ function buildProcurementSuggestion(item, movements = []) {
     recommendedQuantity,
     leadTimeDays,
     reason: shouldReorder
-      ? `AI recommends replenishment to cover ${safetyWindow} days of demand.`
+      ? `Recommended replenishment to cover ${safetyWindow} days of demand.`
       : "Stock position remains healthy.",
     confidence: forecast.confidence,
     forecast,

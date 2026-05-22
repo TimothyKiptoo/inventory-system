@@ -28,8 +28,8 @@ function generateInventoryExcel(items) {
     "Qty On Hand",
     "Min Level",
     "Reorder Level",
-    "Unit Cost",
-    "Value",
+    "Unit Cost (KSH)",
+    "Value (KSH)",
     "Status",
   ];
 

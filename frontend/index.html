@@ -15,12 +15,12 @@
         <p class="eyebrow">REVA Engineering Services</p>
         <h1>Smart Inventory System</h1>
         <p class="lead">
-          Multi-branch inventory intelligence for REVA Engineering Services with
-          role-based access, barcode and RFID support, fraud detection, offline
-          sync, procurement automation, and live enterprise visibility.
+          Inventory intelligence for REVA Engineering Services with role-based access,
+          barcode and RFID support, fraud detection, offline sync, procurement
+          automation, and live enterprise visibility.
         </p>
         <div class="feature-chips">
-          <span>AI Reorder</span>
+          <span>Smart Reorder</span>
           <span>Socket.IO Ready</span>
           <span>Barcode + RFID</span>
           <span>Offline Mode</span>
@@ -65,7 +65,7 @@
     <section id="appView" class="app-shell hidden">
       <header class="topbar">
         <div>
-          <p class="eyebrow">REVA Inventory Command Center</p>
+          <p class="eyebrow">REVA Engineering Services Command Center</p>
           <h1>REVA Engineering Services</h1>
         </div>
         <div class="topbar-actions">
@@ -85,7 +85,7 @@
             <p class="eyebrow">Role-aware workspace</p>
             <h2 id="welcomeTitle">Inventory overview</h2>
             <p id="welcomeText" class="muted">
-              Loading intelligent branch signals and operational alerts.
+              Loading live stock signals and operational alerts.
             </p>
           </div>
           <div class="hero-meta">
@@ -109,7 +109,7 @@
         <section class="panel insights-panel">
           <div class="panel-head inline-head">
             <div>
-              <p class="eyebrow">AI Features</p>
+              <p class="eyebrow">Smart Insights</p>
               <h2>Forecast & Procurement Radar</h2>
             </div>
           </div>
@@ -126,10 +126,6 @@
             <label>
               <span>Item Name</span>
               <input name="name" required />
-            </label>
-            <label>
-              <span>Branch</span>
-              <select name="branch" id="itemBranchSelect" required></select>
             </label>
             <label>
               <span>Department</span>
@@ -172,11 +168,11 @@
               <input name="reorderQuantity" type="number" min="0" value="25" />
             </label>
             <label>
-              <span>Unit Cost</span>
+              <span>Unit Cost (KSH)</span>
               <input name="unitCost" type="number" min="0" step="0.01" value="0" />
             </label>
             <label>
-              <span>Selling Price</span>
+              <span>Selling Price (KSH)</span>
               <input
                 name="sellingPrice"
                 type="number"
@@ -240,7 +236,7 @@
               <input name="reference" placeholder="PO, GRN, Issue Note..." />
             </label>
             <label>
-              <span>Unit Cost</span>
+              <span>Unit Cost (KSH)</span>
               <input name="unitCost" type="number" min="0" step="0.01" value="0" />
             </label>
             <label class="full-width">
@@ -278,10 +274,6 @@
           </div>
           <form id="purchaseOrderForm" class="form-grid">
             <label>
-              <span>Branch</span>
-              <select name="branch" id="poBranchSelect" required></select>
-            </label>
-            <label>
               <span>Supplier</span>
               <select name="supplier" id="poSupplierSelect"></select>
             </label>
@@ -294,7 +286,7 @@
               <input name="quantity" type="number" min="1" value="10" />
             </label>
             <label>
-              <span>Unit Cost</span>
+              <span>Unit Cost (KSH)</span>
               <input name="unitCost" type="number" min="0" step="0.01" value="0" />
             </label>
             <label class="full-width">
@@ -302,7 +294,7 @@
               <textarea
                 name="reason"
                 rows="3"
-                placeholder="AI recommendation or manual procurement note"
+                placeholder="Stock recommendation or manual procurement note"
               ></textarea>
             </label>
             <button type="submit" class="primary-button full-width">
@@ -319,8 +311,8 @@
             <h2>Create Login Accounts</h2>
           </div>
           <p id="userAccessText" class="helper-text">
-            Team members in other branches or locations can sign in through your
-            shared system URL once you create their accounts here.
+            Team members in other locations can sign in through your shared
+            system URL once you create their accounts here.
           </p>
           <form id="userForm" class="form-grid">
             <label>
@@ -338,10 +330,6 @@
             <label>
               <span>Role</span>
               <select name="role" id="userRoleSelect" required></select>
-            </label>
-            <label>
-              <span>Branch</span>
-              <select name="branch" id="userBranchSelect"></select>
             </label>
             <label>
               <span>Department</span>
@@ -369,7 +357,6 @@
                   <th>Name</th>
                   <th>Email</th>
                   <th>Role</th>
-                  <th>Branch</th>
                   <th>Status</th>
                   <th>Last Login</th>
                   <th>Actions</th>
@@ -383,7 +370,7 @@
 
         <section class="panel form-panel" id="aiAgentPanel">
           <div class="panel-head">
-            <p class="eyebrow">AI Stock Agent</p>
+            <p class="eyebrow">Stock Intake Assistant</p>
             <h2>Auto Add Incoming Stock</h2>
           </div>
           <form id="aiAgentForm" class="form-grid">
@@ -392,12 +379,12 @@
               <textarea
                 name="text"
                 rows="8"
-                placeholder="OrbitScan Pro X2 | qty: 6 | cost: 120 | branch: HQ | department: Operations | category: Equipment | subcategory: Barcode Scanners | barcode: 8900001001003"
+                placeholder="OrbitScan Pro X2 | qty: 6 | cost: 120 | department: Operations | category: Equipment | subcategory: Barcode Scanners | barcode: 8900001001003"
               ></textarea>
             </label>
             <label>
               <span>Reference</span>
-              <input name="reference" value="AI-AUTOSTOCK" />
+              <input name="reference" value="AUTO-STOCK" />
             </label>
             <label>
               <span>Mode</span>
@@ -407,7 +394,7 @@
               </select>
             </label>
             <button type="submit" class="primary-button full-width">
-              Run REVA AutoStock AI
+              Run Stock Intake
             </button>
           </form>
           <div id="aiAgentResults" class="stack-list"></div>
@@ -460,12 +447,11 @@
                 <tr>
                   <th>Inventory Number</th>
                   <th>Item</th>
-                  <th>Branch</th>
                   <th>Category</th>
                   <th>Barcode</th>
                   <th>RFID</th>
                   <th>Qty</th>
-                  <th>AI Status</th>
+                  <th>Stock Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>

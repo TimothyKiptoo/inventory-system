@@ -142,14 +142,20 @@ async function resolveInventoryContext(payload, currentItem = null) {
 
 async function nextInventoryNumber({
   companyName,
+  departmentCode,
   departmentName,
+  categoryCode,
   categoryName,
+  subcategoryCode,
   subcategoryName,
 }) {
   const prefix = buildInventoryPrefix({
     companyName,
+    departmentCode,
     departmentName,
+    categoryCode,
     categoryName,
+    subcategoryCode,
     subcategoryName,
   });
 
@@ -160,8 +166,11 @@ async function nextInventoryNumber({
   return createInventoryNumber(
     {
       companyName,
+      departmentCode,
       departmentName,
+      categoryCode,
       categoryName,
+      subcategoryCode,
       subcategoryName,
     },
     existing + 1
@@ -232,7 +241,7 @@ async function refreshItemIntelligence(item) {
       severity: forecast.risk === "critical" ? "critical" : "warning",
       branch: item.branch,
       item: item._id,
-      title: `AI procurement suggestion: ${item.name}`,
+      title: `Procurement suggestion: ${item.name}`,
       message: suggestion.reason,
       recommendation: `Recommended replenishment: ${suggestion.recommendedQuantity} ${item.unit}.`,
       predictedDaysRemaining: forecast.daysUntilMinimum,
@@ -259,8 +268,11 @@ async function createInventoryItem({ payload, user, source = "manual" }) {
     payload.inventoryNumber ||
     (await nextInventoryNumber({
       companyName: defaults.companyName,
+      departmentCode: department.code,
       departmentName: department.name,
+      categoryCode: category.code,
       categoryName: category.name,
+      subcategoryCode: subcategory.code,
       subcategoryName: subcategory.name,
     }));
 
@@ -373,8 +385,11 @@ async function updateInventoryItem({ itemId, payload, user }) {
   if (regenerateInventoryNumber) {
     item.inventoryNumber = await nextInventoryNumber({
       companyName: item.companyName,
+      departmentCode: department.code,
       departmentName: department.name,
+      categoryCode: category.code,
       categoryName: category.name,
+      subcategoryCode: subcategory.code,
       subcategoryName: subcategory.name,
     });
   }

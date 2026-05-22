@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    buildCommand: npm install
+    buildCommand: npm install && npm run build
     startCommand: npm start
     healthCheckPath: /api/system/health
     envVars:
@@ -21,7 +21,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: COMPANY_NAME
-        value: REVA ENGINEERING SERVICES
+        value: REVA Engineering Services
       - key: APP_NAME
         value: REVA Engineering Services Inventory System
       - key: DEFAULT_ADMIN_EMAIL

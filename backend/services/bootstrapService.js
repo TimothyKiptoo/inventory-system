@@ -6,30 +6,194 @@ const InventoryItem = require("../models/InventoryItem");
 const Supplier = require("../models/Supplier");
 const User = require("../models/User");
 const { hashPassword } = require("../utils/passwords");
-const { slugPart } = require("../utils/inventoryNumber");
+const {
+  buildInventoryPrefix,
+  createInventoryNumber,
+  slugPart,
+} = require("../utils/inventoryNumber");
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const LEGACY_COMPANY_NAMES = new Set([
+  "TEAMCO",
+  "ORION STOCK",
+  "REVA ENGINEERING SERVICES",
+]);
+const LEGACY_ADMIN_EMAILS = [
+  "admin@teamco.local",
+  "admin@orionstock.local",
+  "admin@revaengineeringservices.local",
+];
+
+function isLegacyCompanyName(value) {
+  return LEGACY_COMPANY_NAMES.has(String(value || "").trim().toUpperCase());
+}
+
+function normalizeCompanyName(value) {
+  const companyName = String(value || "").trim();
+
+  if (!companyName) {
+    return defaults.companyName;
+  }
+
+  return isLegacyCompanyName(companyName) ? defaults.companyName : companyName;
+}
+
+function buildInventoryNumberInput(item) {
+  return {
+    companyName: item.companyName || defaults.companyName,
+    departmentCode: item.department?.code || "",
+    departmentName: item.department?.name || "",
+    categoryCode: item.category?.code || "",
+    categoryName: item.category?.name || "",
+    subcategoryCode: item.subcategory?.code || "",
+    subcategoryName: item.subcategory?.name || "",
+  };
+}
+
+function inventoryNumberInputForCompany(item, companyName) {
+  return buildInventoryNumberInput({
+    ...(typeof item.toObject === "function" ? item.toObject() : item),
+    companyName: companyName || defaults.companyName,
+  });
+}
+
+function buildInventoryPrefixForCompany(item, companyName) {
+  return buildInventoryPrefix(
+    inventoryNumberInputForCompany(item, companyName)
+  );
+}
+
+function shouldShortenInventoryNumber(item, companyName = item.companyName) {
+  const companySlug = slugPart(companyName || defaults.companyName);
+
+  return (
+    String(item.inventoryNumber || "").startsWith("TEAMCO-") ||
+    String(item.inventoryNumber || "").startsWith(`${companySlug}-`)
+  );
+}
+
+function shouldRegenerateInventoryNumber(
+  item,
+  previousCompanyName,
+  normalizedCompanyName
+) {
+  if (shouldShortenInventoryNumber(item, previousCompanyName)) {
+    return true;
+  }
+
+  const previousPrefix = buildInventoryPrefixForCompany(item, previousCompanyName);
+  const normalizedPrefix = buildInventoryPrefixForCompany(item, normalizedCompanyName);
+
+  return (
+    previousPrefix !== normalizedPrefix &&
+    Boolean(parseInventorySequence(item.inventoryNumber, previousPrefix))
+  );
+}
+
+function parseInventorySequence(inventoryNumber, prefix) {
+  const match = String(inventoryNumber || "").match(
+    new RegExp(`^${escapeRegex(prefix)}-(\\d+)$`)
+  );
+
+  return match ? Number(match[1]) : null;
+}
 
 async function refreshLegacyBranding() {
-  const companySlug = slugPart(defaults.companyName);
-  const items = await InventoryItem.find({
-    $or: [{ companyName: "TEAMCO" }, { inventoryNumber: /^TEAMCO-/ }],
-  });
+  const items = await InventoryItem.find()
+    .populate("department", "name code")
+    .populate("category", "name code")
+    .sort({ createdAt: 1, _id: 1 });
+
+  const nextSequenceByPrefix = new Map();
 
   for (const item of items) {
-    item.companyName = defaults.companyName;
-    if (item.inventoryNumber.startsWith("TEAMCO-")) {
-      item.inventoryNumber = item.inventoryNumber.replace(
-        /^TEAMCO-/,
-        `${companySlug}-`
+    const normalizedCompanyName = normalizeCompanyName(item.companyName);
+    const prefix = buildInventoryPrefixForCompany(item, normalizedCompanyName);
+    if (
+      shouldRegenerateInventoryNumber(
+        item,
+        item.companyName || defaults.companyName,
+        normalizedCompanyName
+      )
+    ) {
+      continue;
+    }
+
+    const existingSequence = parseInventorySequence(item.inventoryNumber, prefix);
+    if (existingSequence) {
+      nextSequenceByPrefix.set(
+        prefix,
+        Math.max(nextSequenceByPrefix.get(prefix) || 0, existingSequence)
       );
     }
-    await item.save();
   }
 
-  const legacyAdmin = await User.findOne({ email: "admin@teamco.local" });
-  if (legacyAdmin && legacyAdmin.email !== defaults.defaultAdminEmail) {
-    legacyAdmin.email = defaults.defaultAdminEmail;
-    await legacyAdmin.save();
+  for (const item of items) {
+    const previousCompanyName = item.companyName || defaults.companyName;
+    const normalizedCompanyName = normalizeCompanyName(previousCompanyName);
+    const previousInventoryNumber = item.inventoryNumber;
+    let changed = false;
+
+    if (item.companyName !== normalizedCompanyName) {
+      item.companyName = normalizedCompanyName;
+      changed = true;
+    }
+
+    if (
+      shouldRegenerateInventoryNumber(
+        item,
+        previousCompanyName,
+        normalizedCompanyName
+      )
+    ) {
+      const input = inventoryNumberInputForCompany(item, normalizedCompanyName);
+      const prefix = buildInventoryPrefix(input);
+      const currentMaxSequence = nextSequenceByPrefix.get(prefix) || 0;
+      const previousPrefix = buildInventoryPrefixForCompany(
+        item,
+        previousCompanyName
+      );
+      const previousSequence =
+        parseInventorySequence(previousInventoryNumber, previousPrefix) || 0;
+      const nextSequence =
+        previousSequence > currentMaxSequence
+          ? previousSequence
+          : currentMaxSequence + 1;
+
+      nextSequenceByPrefix.set(prefix, nextSequence);
+      item.inventoryNumber = createInventoryNumber(input, nextSequence);
+      if (!item.barcode || item.barcode === previousInventoryNumber) {
+        item.barcode = item.inventoryNumber;
+      }
+      changed = changed || item.inventoryNumber !== previousInventoryNumber;
+    }
+
+    if (changed) {
+      await item.save();
+    }
   }
+
+}
+
+async function migrateLegacyAdminEmail() {
+  const existingAdmin = await User.findOne({ email: defaults.defaultAdminEmail });
+  if (existingAdmin) {
+    return existingAdmin;
+  }
+
+  const legacyAdmin = await User.findOne({
+    email: { $in: LEGACY_ADMIN_EMAILS },
+  });
+  if (!legacyAdmin || legacyAdmin.email === defaults.defaultAdminEmail) {
+    return legacyAdmin;
+  }
+
+  legacyAdmin.email = defaults.defaultAdminEmail;
+  await legacyAdmin.save();
+  return legacyAdmin;
 }
 
 async function seedInitialData() {
@@ -51,13 +215,13 @@ async function seedInitialData() {
   let warehouse = await Branch.findOne({ code: "WH1" });
   if (!warehouse) {
     warehouse = await Branch.create({
-      name: "REVA Main Warehouse",
+      name: "REVA Engineering Services Main Warehouse",
       code: "WH1",
       location: "Mombasa",
       contactEmail: defaults.warehouseEmail,
     });
   } else {
-    warehouse.name = "REVA Main Warehouse";
+    warehouse.name = "REVA Engineering Services Main Warehouse";
     warehouse.contactEmail = defaults.warehouseEmail;
     await warehouse.save();
   }
@@ -114,6 +278,7 @@ async function seedInitialData() {
     });
   }
 
+  await migrateLegacyAdminEmail();
   const existingAdmin = await User.findOne({ email: defaults.defaultAdminEmail });
   if (!existingAdmin) {
     const password = hashPassword(defaults.defaultAdminPassword);
@@ -141,11 +306,10 @@ async function seedInitialData() {
         subcategory: { name: "Barcode Scanners", code: "BARSCAN" },
         supplier: supplier._id,
         name: "OrbitScan Pro X2",
-        description: "AI-ready 2D barcode scanner for warehouse counters",
+        description: "2D barcode scanner for warehouse counters",
         unit: "pcs",
         sku: "OSC-X2",
-        inventoryNumber:
-          "REVA-ENGINEERING-SERVICES-OPERATIONS-EQUIPMENT-BARCODE-SCANNERS-0001",
+        inventoryNumber: "RES-OPS-EQU-BAR-0001",
         barcode: "8900001001001",
         rfidTag: "RFID-OSC-X2-01",
         quantityOnHand: 18,
@@ -167,8 +331,7 @@ async function seedInitialData() {
         description: "Branch-ready RFID receiver for rapid stock counts",
         unit: "pcs",
         sku: "PRF-5",
-        inventoryNumber:
-          "REVA-ENGINEERING-SERVICES-INFORMATION-TECHNOLOGY-EQUIPMENT-RFID-READERS-0001",
+        inventoryNumber: "RES-IT-EQU-RFI-0001",
         barcode: "8900001001002",
         rfidTag: "RFID-PRF-5-01",
         quantityOnHand: 6,

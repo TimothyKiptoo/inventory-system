@@ -1,4 +1,4 @@
-const CACHE_NAME = "orionstock-shell-v1";
+const CACHE_NAME = "reva-engineering-services-shell-v2";
 const APP_SHELL = ["/", "/index.html", "/styles.css", "/app.js"];
 
 self.addEventListener("install", (event) => {

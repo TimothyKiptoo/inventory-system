@@ -16,7 +16,7 @@ module.exports = {
     "mongodb://127.0.0.1:27017/reva-engineering-inventory-system",
   jwtSecret:
     process.env.JWT_SECRET || "reva-engineering-services-inventory-secret",
-  companyName: process.env.COMPANY_NAME || "REVA ENGINEERING SERVICES",
+  companyName: process.env.COMPANY_NAME || "REVA Engineering Services",
   appName:
     process.env.APP_NAME || "REVA Engineering Services Inventory System",
   defaultAdminEmail:
