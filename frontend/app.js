@@ -874,6 +874,15 @@ async function handlePurchaseOrderCreate(event) {
 
 async function handleUserCreate(event) {
   event.preventDefault();
+  if (!canManageUsers()) {
+    setFeedback(
+      els.userFormFeedback,
+      "Only administrators can create additional user login accounts.",
+      true
+    );
+    return;
+  }
+
   const form = event.currentTarget;
   const payload = payloadFromForm(form);
   payload.branch = payload.branch || getCurrentBranchId() || null;
