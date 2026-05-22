@@ -132,6 +132,10 @@ function can(permission) {
   return allowed.includes("*") || allowed.includes(permission);
 }
 
+function canManageUsers() {
+  return state.currentUser?.role === "administrator";
+}
+
 function setFeedback(element, message, isError = false) {
   element.textContent = message || "";
   element.style.color = isError ? "var(--danger)" : "var(--muted)";
@@ -423,7 +427,7 @@ function renderAccessInfo() {
   const remoteNote =
     !access.publicBaseUrl && loginUrl.includes("localhost")
       ? "For staff outside this machine, share your server IP/domain instead of localhost."
-      : "This URL can be shared with staff in other locations.";
+      : "Only administrators can create and manage additional user login accounts from this URL.";
 
   els.userAccessText.textContent = `Login URL: ${loginUrl}. ${remoteNote}`;
 }
@@ -545,7 +549,7 @@ function renderRoleAwareUI() {
   );
   document.getElementById("userAdminPanel").classList.toggle(
     "hidden",
-    !can("users.manage")
+    !canManageUsers()
   );
   document.getElementById("aiAgentPanel").classList.toggle(
     "hidden",

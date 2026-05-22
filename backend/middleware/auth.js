@@ -120,9 +120,26 @@ function requirePermission(permission) {
   };
 }
 
+function requireRole(role) {
+  return function roleMiddleware(req, res, next) {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required." });
+    }
+
+    if (req.user.role === role) {
+      return next();
+    }
+
+    return res.status(403).json({
+      error: `Only ${role}s can perform this action.`,
+    });
+  };
+}
+
 module.exports = {
   authenticate,
   optionalAuthenticate,
   requirePermission,
+  requireRole,
   permissions,
 };
