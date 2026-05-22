@@ -1,5 +1,12 @@
+const STORAGE_KEYS = {
+  token: "reva_inventory_token",
+  offlineQueue: "reva_inventory_offline_queue",
+  clientId: "reva_inventory_client_id",
+  theme: "reva_inventory_theme",
+};
+
 const state = {
-  token: localStorage.getItem("orionstock_token") || "",
+  token: localStorage.getItem(STORAGE_KEYS.token) || "",
   currentUser: null,
   bootstrap: null,
   inventory: [],
@@ -9,14 +16,13 @@ const state = {
   activity: [],
   purchaseOrders: [],
   capabilities: null,
-  offlineQueue: JSON.parse(localStorage.getItem("orionstock_offline_queue") || "[]"),
-  clientId:
-    localStorage.getItem("orionstock_client_id") || crypto.randomUUID(),
+  offlineQueue: JSON.parse(localStorage.getItem(STORAGE_KEYS.offlineQueue) || "[]"),
+  clientId: localStorage.getItem(STORAGE_KEYS.clientId) || crypto.randomUUID(),
   realtimeMode: "SSE",
   lastAiAgentRun: null,
 };
 
-localStorage.setItem("orionstock_client_id", state.clientId);
+localStorage.setItem(STORAGE_KEYS.clientId, state.clientId);
 
 const rolePermissions = {
   administrator: ["*"],
@@ -85,20 +91,17 @@ const els = {
   purchaseOrderForm: document.getElementById("purchaseOrderForm"),
   purchaseFormFeedback: document.getElementById("purchaseFormFeedback"),
   purchaseOrderList: document.getElementById("purchaseOrderList"),
-  itemBranchSelect: document.getElementById("itemBranchSelect"),
   itemDepartmentSelect: document.getElementById("itemDepartmentSelect"),
   itemCategorySelect: document.getElementById("itemCategorySelect"),
   itemSubcategorySelect: document.getElementById("itemSubcategorySelect"),
   itemSupplierSelect: document.getElementById("itemSupplierSelect"),
   movementItemSelect: document.getElementById("movementItemSelect"),
-  poBranchSelect: document.getElementById("poBranchSelect"),
   poSupplierSelect: document.getElementById("poSupplierSelect"),
   poItemSelect: document.getElementById("poItemSelect"),
   userForm: document.getElementById("userForm"),
   userFormFeedback: document.getElementById("userFormFeedback"),
   userTableBody: document.getElementById("userTableBody"),
   userAccessText: document.getElementById("userAccessText"),
-  userBranchSelect: document.getElementById("userBranchSelect"),
   userDepartmentSelect: document.getElementById("userDepartmentSelect"),
   userRoleSelect: document.getElementById("userRoleSelect"),
   aiAgentForm: document.getElementById("aiAgentForm"),
@@ -117,11 +120,11 @@ let scannerTimer = null;
 
 function setTheme(theme) {
   document.body.dataset.theme = theme;
-  localStorage.setItem("orionstock_theme", theme);
+  localStorage.setItem(STORAGE_KEYS.theme, theme);
 }
 
 function restoreTheme() {
-  setTheme(localStorage.getItem("orionstock_theme") || "dark");
+  setTheme(localStorage.getItem(STORAGE_KEYS.theme) || "dark");
 }
 
 function can(permission) {
@@ -141,11 +144,17 @@ function updateConnectionStatus() {
 }
 
 function saveOfflineQueue() {
-  localStorage.setItem(
-    "orionstock_offline_queue",
-    JSON.stringify(state.offlineQueue)
-  );
+  localStorage.setItem(STORAGE_KEYS.offlineQueue, JSON.stringify(state.offlineQueue));
   els.offlineQueueCount.textContent = String(state.offlineQueue.length);
+}
+
+function getCurrentBranchId() {
+  return (
+    state.currentUser?.branch?._id ||
+    state.currentUser?.branch ||
+    state.bootstrap?.branches?.[0]?._id ||
+    ""
+  );
 }
 
 async function api(path, options = {}, raw = false) {
@@ -193,11 +202,10 @@ function number(value) {
 }
 
 function currency(value) {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(Number(value || 0));
+  return `KSH ${new Intl.NumberFormat("en-KE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0))}`;
 }
 
 function formatDate(value) {
@@ -216,7 +224,7 @@ function renderSummary() {
 
   const cards = [
     ["Inventory Items", number(summary.totalItems), "Tracked SKUs"],
-    ["Stock Value", currency(summary.inventoryValue), "Combined branch value"],
+    ["Stock Value", currency(summary.inventoryValue), "Combined stock value"],
     ["Low Stock", number(summary.lowStockCount), "Needs reorder attention"],
     ["Out of Stock", number(summary.outOfStockCount), "Requires replenishment"],
     ["Open Alerts", number(summary.openAlerts), "Fraud + stock issues"],
@@ -254,9 +262,7 @@ function renderSuggestions() {
                 )}% confidence</span>
               </div>
               <h3>${entry.itemName}</h3>
-              <div class="subtext">${entry.inventoryNumber} • ${
-                entry.branchName
-              }</div>
+              <div class="subtext">${entry.inventoryNumber}</div>
               <p>${entry.reason}</p>
               <div class="action-group">
                 <button
@@ -281,7 +287,7 @@ function renderSuggestions() {
             <article class="insight-card">
               <span class="badge danger">Fraud score ${entry.fraudScore}</span>
               <h3>${entry.itemName}</h3>
-              <div class="subtext">${entry.type} • ${entry.branch}</div>
+              <div class="subtext">${entry.type}</div>
             </article>
           `
         )
@@ -370,7 +376,7 @@ function renderPurchaseOrders() {
           `
         )
         .join("")
-    : `<article class="order-card"><h3>No purchase orders yet</h3><p>Create one from the AI suggestions or the procurement form.</p></article>`;
+    : `<article class="order-card"><h3>No purchase orders yet</h3><p>Create one from the smart suggestions or the procurement form.</p></article>`;
 }
 
 function renderUsers() {
@@ -386,7 +392,6 @@ function renderUsers() {
               </td>
               <td class="mono">${user.email}</td>
               <td><span class="badge active">${user.role}</span></td>
-              <td>${user.branch?.name || "Unassigned"}</td>
               <td>
                 <span class="badge ${user.isActive ? "good" : "critical"}">
                   ${user.isActive ? "active" : "inactive"}
@@ -409,7 +414,7 @@ function renderUsers() {
           `
         )
         .join("")
-    : `<tr><td colspan="7">No additional users yet. Create branch, procurement, store, and audit logins here.</td></tr>`;
+    : `<tr><td colspan="6">No additional users yet. Create procurement, store, and audit logins here.</td></tr>`;
 }
 
 function renderAccessInfo() {
@@ -418,7 +423,7 @@ function renderAccessInfo() {
   const remoteNote =
     !access.publicBaseUrl && loginUrl.includes("localhost")
       ? "For staff outside this machine, share your server IP/domain instead of localhost."
-      : "This URL can be shared with staff in other branches or locations.";
+      : "This URL can be shared with staff in other locations.";
 
   els.userAccessText.textContent = `Login URL: ${loginUrl}. ${remoteNote}`;
 }
@@ -427,7 +432,7 @@ function renderAiAgentResults() {
   const run = state.lastAiAgentRun;
   if (!run) {
     els.aiAgentResults.innerHTML =
-      '<article class="stack-card"><h3>AI agent ready</h3><p>Paste supplier or receiving lines and the agent will match existing items or create new stock entries automatically.</p></article>';
+      '<article class="stack-card"><h3>Stock intake ready</h3><p>Paste supplier or receiving lines and the intake assistant will match existing items or create new stock entries automatically.</p></article>';
     return;
   }
 
@@ -448,10 +453,8 @@ function renderAiAgentResults() {
               </div>
               <h3>${entry.itemName || entry.raw}</h3>
               <div class="subtext">${
-                entry.targetInventoryNumber
-                  ? `${entry.targetInventoryNumber} • `
-                  : ""
-              }${entry.branchName || ""}</div>
+                entry.targetInventoryNumber || ""
+              }</div>
               <p>${
                 entry.reason ||
                 `Qty ${entry.quantity || 0} • confidence ${Math.round(
@@ -462,7 +465,7 @@ function renderAiAgentResults() {
           `
         )
         .join("")
-    : '<article class="stack-card"><h3>No lines processed</h3><p>Add at least one incoming stock line for the AI agent to work with.</p></article>';
+    : '<article class="stack-card"><h3>No lines processed</h3><p>Add at least one incoming stock line for the intake assistant to work with.</p></article>';
 }
 
 function filteredInventory() {
@@ -489,7 +492,6 @@ function renderInventoryTable() {
             <strong>${item.name}</strong>
             <div class="subtext">${item.description || "No description"}</div>
           </td>
-          <td>${item.branch?.name || ""}</td>
           <td>${item.category?.name || ""} / ${item.subcategory?.name || ""}</td>
           <td>${item.barcode || ""}</td>
           <td>${item.rfidTag || ""}</td>
@@ -552,26 +554,21 @@ function renderRoleAwareUI() {
 }
 
 function refreshSelects() {
-  const branches = state.bootstrap?.branches || [];
   const departments = state.bootstrap?.departments || [];
   const categories = state.bootstrap?.categories || [];
   const suppliers = state.bootstrap?.suppliers || [];
+  const currentBranchId = getCurrentBranchId();
+  const scopedDepartments = departments.filter(
+    (department) =>
+      !department.branch ||
+      String(department.branch._id || department.branch) === String(currentBranchId)
+  );
 
   populateSelect(
-    els.itemBranchSelect,
-    branches.map((branch) => ({ value: branch._id, label: branch.name })),
-    "Choose branch"
-  );
-  populateSelect(
-    els.poBranchSelect,
-    branches.map((branch) => ({ value: branch._id, label: branch.name })),
-    "Choose branch"
-  );
-  populateSelect(
     els.itemDepartmentSelect,
-    departments.map((department) => ({
+    scopedDepartments.map((department) => ({
       value: department._id,
-      label: `${department.name}${department.branch ? ` • ${department.branch.name}` : ""}`,
+      label: department.name,
     })),
     "Choose department"
   );
@@ -594,15 +591,10 @@ function refreshSelects() {
     "Optional supplier"
   );
   populateSelect(
-    els.userBranchSelect,
-    branches.map((branch) => ({ value: branch._id, label: branch.name })),
-    "Optional branch"
-  );
-  populateSelect(
     els.userDepartmentSelect,
-    departments.map((department) => ({
+    scopedDepartments.map((department) => ({
       value: department._id,
-      label: `${department.name}${department.branch ? ` • ${department.branch.name}` : ""}`,
+      label: department.name,
     })),
     "Optional department"
   );
@@ -702,12 +694,9 @@ async function loadAppData() {
   renderInventoryTable();
   renderRoleAwareUI();
 
-  const branchText = state.dashboard.branchHealth
-    .map((entry) => `${entry.branchName}: ${entry.lowStock}/${entry.items} low`)
-    .join(" • ");
-
   els.welcomeTitle.textContent = `${state.currentUser.name}, your ${state.currentUser.role} workspace is live`;
-  els.welcomeText.textContent = branchText || "Branch health will appear here as activity grows.";
+  els.welcomeText.textContent =
+    "Live stock status and operational alerts will appear here as activity grows.";
 }
 
 function queueOfflineOperation(operation, feedbackElement, successText) {
@@ -762,7 +751,7 @@ async function handleLogin(event) {
 
     state.token = response.token;
     state.currentUser = response.user;
-    localStorage.setItem("orionstock_token", state.token);
+    localStorage.setItem(STORAGE_KEYS.token, state.token);
     els.authView.classList.add("hidden");
     els.appView.classList.remove("hidden");
     els.currentUserLabel.textContent = `${state.currentUser.name} • ${state.currentUser.role}`;
@@ -775,7 +764,7 @@ async function handleLogin(event) {
 }
 
 function logout() {
-  localStorage.removeItem("orionstock_token");
+  localStorage.removeItem(STORAGE_KEYS.token);
   state.token = "";
   state.currentUser = null;
   location.reload();
@@ -790,7 +779,9 @@ function payloadFromForm(form) {
 
 async function handleItemCreate(event) {
   event.preventDefault();
-  const payload = payloadFromForm(event.currentTarget);
+  const form = event.currentTarget;
+  const payload = payloadFromForm(form);
+  payload.branch = payload.branch || getCurrentBranchId();
 
   try {
     if (!navigator.onLine) {
@@ -799,7 +790,7 @@ async function handleItemCreate(event) {
         els.itemFormFeedback,
         "Inventory item queued."
       );
-      event.currentTarget.reset();
+      form.reset();
       return;
     }
 
@@ -808,7 +799,7 @@ async function handleItemCreate(event) {
       body: JSON.stringify(payload),
     });
     setFeedback(els.itemFormFeedback, "Inventory item created.");
-    event.currentTarget.reset();
+    form.reset();
     await loadAppData();
   } catch (error) {
     setFeedback(els.itemFormFeedback, error.message, true);
@@ -817,7 +808,8 @@ async function handleItemCreate(event) {
 
 async function handleMovementCreate(event) {
   event.preventDefault();
-  const payload = payloadFromForm(event.currentTarget);
+  const form = event.currentTarget;
+  const payload = payloadFromForm(form);
   const itemId = payload.itemId;
   delete payload.itemId;
 
@@ -828,7 +820,7 @@ async function handleMovementCreate(event) {
         els.movementFormFeedback,
         "Movement queued."
       );
-      event.currentTarget.reset();
+      form.reset();
       return;
     }
 
@@ -837,7 +829,7 @@ async function handleMovementCreate(event) {
       body: JSON.stringify(payload),
     });
     setFeedback(els.movementFormFeedback, "Movement recorded successfully.");
-    event.currentTarget.reset();
+    form.reset();
     await loadAppData();
   } catch (error) {
     setFeedback(els.movementFormFeedback, error.message, true);
@@ -846,14 +838,15 @@ async function handleMovementCreate(event) {
 
 async function handlePurchaseOrderCreate(event) {
   event.preventDefault();
-  const payload = payloadFromForm(event.currentTarget);
+  const form = event.currentTarget;
+  const payload = payloadFromForm(form);
   const item = state.inventory.find((entry) => entry._id === payload.itemId);
 
   try {
     await api("/api/purchase-orders", {
       method: "POST",
       body: JSON.stringify({
-        branch: payload.branch || item?.branch?._id,
+        branch: item?.branch?._id || item?.branch || getCurrentBranchId(),
         supplier: payload.supplier || item?.supplier?._id || "",
         reason: payload.reason || "Manual procurement request",
         lineItems: [
@@ -868,7 +861,7 @@ async function handlePurchaseOrderCreate(event) {
       }),
     });
     setFeedback(els.purchaseFormFeedback, "Purchase order created.");
-    event.currentTarget.reset();
+    form.reset();
     await loadAppData();
   } catch (error) {
     setFeedback(els.purchaseFormFeedback, error.message, true);
@@ -877,7 +870,9 @@ async function handlePurchaseOrderCreate(event) {
 
 async function handleUserCreate(event) {
   event.preventDefault();
-  const payload = payloadFromForm(event.currentTarget);
+  const form = event.currentTarget;
+  const payload = payloadFromForm(form);
+  payload.branch = payload.branch || getCurrentBranchId() || null;
 
   try {
     await api("/api/meta/users", {
@@ -888,7 +883,7 @@ async function handleUserCreate(event) {
       els.userFormFeedback,
       "User account created. Share the login URL and credentials with the staff member."
     );
-    event.currentTarget.reset();
+    form.reset();
     await loadAppData();
   } catch (error) {
     setFeedback(els.userFormFeedback, error.message, true);
@@ -953,7 +948,7 @@ async function handleAiAgentRun(event) {
       els.aiAgentFeedback,
       result.previewOnly
         ? `Preview complete. ${result.summary.previews} lines analyzed.`
-        : `AI agent applied ${result.summary.applied} stock updates automatically.`
+        : `Stock intake applied ${result.summary.applied} stock updates automatically.`
     );
     if (!result.previewOnly) {
       await loadAppData();
@@ -978,6 +973,16 @@ async function receivePurchaseOrder(orderId) {
 }
 
 async function initializeRealtime() {
+  const enablePolling = () => {
+    state.realtimeMode = "Polling";
+    els.realtimeMode.textContent = state.realtimeMode;
+    setInterval(() => {
+      if (state.token) {
+        loadAppData().catch(() => {});
+      }
+    }, 15000);
+  };
+
   try {
     state.capabilities = await api("/api/system/capabilities");
     if (state.capabilities.realtime.socketIoAvailable) {
@@ -996,7 +1001,7 @@ async function initializeRealtime() {
         }
       };
       document.body.appendChild(script);
-    } else {
+    } else if (state.capabilities.realtime.sseAvailable) {
       const events = new EventSource("/api/system/events");
       events.onmessage = () => {
         if (state.token) {
@@ -1005,14 +1010,11 @@ async function initializeRealtime() {
       };
       state.realtimeMode = "SSE";
       els.realtimeMode.textContent = state.realtimeMode;
+    } else {
+      enablePolling();
     }
   } catch (error) {
-    els.realtimeMode.textContent = "Polling";
-    setInterval(() => {
-      if (state.token) {
-        loadAppData().catch(() => {});
-      }
-    }, 15000);
+    enablePolling();
   }
 }
 
@@ -1117,11 +1119,10 @@ function bindEvents() {
       );
       if (item) {
         els.poItemSelect.value = item._id;
-        els.poBranchSelect.value = item.branch?._id || item.branch;
         els.poSupplierSelect.value = item.supplier?._id || item.supplier || "";
         els.purchaseOrderForm.quantity.value = poTarget.dataset.poQuantity || "1";
         els.purchaseOrderForm.unitCost.value = item.unitCost || 0;
-        els.purchaseOrderForm.reason.value = `AI reorder suggestion for ${item.name}`;
+        els.purchaseOrderForm.reason.value = `Smart reorder suggestion for ${item.name}`;
         setFeedback(els.purchaseFormFeedback, "Suggestion loaded into purchase order form.");
       }
       return;
@@ -1174,7 +1175,7 @@ async function restoreSession() {
     await loadAppData();
     await flushOfflineQueue();
   } catch (error) {
-    localStorage.removeItem("orionstock_token");
+    localStorage.removeItem(STORAGE_KEYS.token);
     state.token = "";
   }
 }

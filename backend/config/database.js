@@ -1,10 +1,26 @@
 const mongoose = require("mongoose");
 const defaults = require("./defaults");
 
+let connectionPromise = null;
+
 async function connectDatabase() {
   mongoose.set("strictQuery", true);
-  await mongoose.connect(defaults.mongoUri);
-  return mongoose.connection;
+
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  if (!connectionPromise) {
+    connectionPromise = mongoose
+      .connect(defaults.mongoUri)
+      .then(() => mongoose.connection)
+      .catch((error) => {
+        connectionPromise = null;
+        throw error;
+      });
+  }
+
+  return connectionPromise;
 }
 
 module.exports = {

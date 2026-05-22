@@ -187,7 +187,7 @@ async function updateUserStatus(req, res) {
 }
 
 function generateTemporaryPassword() {
-  return `Reva#${crypto.randomBytes(4).toString("hex")}`;
+  return `REVA#${crypto.randomBytes(4).toString("hex")}`;
 }
 
 async function resetUserPassword(req, res) {

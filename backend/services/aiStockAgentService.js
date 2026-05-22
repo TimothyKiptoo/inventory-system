@@ -345,13 +345,13 @@ async function runAutoStockAgent({ payload, user }) {
           type: "purchase",
           quantity: parsed.quantity,
           unitCost: parsed.unitCost || existing.unitCost || 0,
-          reference: payload.reference || "AI-AUTOSTOCK",
-          notes: `REVA AutoStock AI matched inbound stock: ${line}`,
+          reference: payload.reference || "AUTO-STOCK",
+          notes: `Automated stock intake matched inbound stock: ${line}`,
           channel: "system",
           barcode: parsed.barcode || existing.barcode,
           rfidTag: parsed.rfidTag || existing.rfidTag,
           metadata: {
-            agent: "reva_autostock",
+            agent: "orion_autostock",
             confidence: plan.confidence,
             raw: line,
           },
@@ -391,12 +391,12 @@ async function runAutoStockAgent({ payload, user }) {
         unit: parsed.unit,
         description:
           parsed.description ||
-          `Auto-created by REVA AutoStock AI from inbound stock intake.`,
+          `Auto-created from inbound stock intake.`,
         metadata: {
-          agent: "reva_autostock",
+          agent: "orion_autostock",
           confidence: plan.confidence,
           raw: line,
-          reference: payload.reference || "AI-AUTOSTOCK",
+          reference: payload.reference || "AUTO-STOCK",
         },
       },
       user,
@@ -428,8 +428,8 @@ async function runAutoStockAgent({ payload, user }) {
     entityId: `${Date.now()}`,
     branch: user?.branch?._id || user?.branch || null,
     summary: previewOnly
-      ? `Previewed REVA AutoStock AI intake for ${summary.totalLines} lines.`
-      : `REVA AutoStock AI processed ${summary.totalLines} inbound stock lines.`,
+      ? `Previewed automated stock intake for ${summary.totalLines} lines.`
+      : `Automated stock intake processed ${summary.totalLines} inbound stock lines.`,
     after: {
       summary,
       results,
@@ -439,8 +439,8 @@ async function runAutoStockAgent({ payload, user }) {
   if (!previewOnly && summary.applied > 0) {
     await notifyRoles({
       roles: ["administrator", "manager", "procurement"],
-      title: "REVA AutoStock AI updated inventory",
-      message: `The AI stock agent applied ${summary.applied} inventory updates automatically.`,
+      title: "Automated stock intake updated inventory",
+      message: `The stock intake assistant applied ${summary.applied} inventory updates automatically.`,
       metadata: {
         channelHint: "email",
         summary,

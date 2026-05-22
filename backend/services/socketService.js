@@ -2,7 +2,16 @@ let io = null;
 let socketIoAvailable = false;
 const sseClients = new Set();
 
+function isServerlessRuntime() {
+  return Boolean(process.env.VERCEL);
+}
+
 function initRealtime(server) {
+  if (isServerlessRuntime()) {
+    socketIoAvailable = false;
+    return;
+  }
+
   try {
     const { Server } = require("socket.io");
     io = new Server(server, {
@@ -22,6 +31,13 @@ function initRealtime(server) {
 }
 
 function registerSseClient(res) {
+  if (isServerlessRuntime()) {
+    res.status(501).json({
+      error: "Realtime event streams are not available on this deployment.",
+    });
+    return;
+  }
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -39,6 +55,10 @@ function registerSseClient(res) {
 }
 
 function emit(event, payload) {
+  if (isServerlessRuntime()) {
+    return;
+  }
+
   if (io) {
     io.emit(event, payload);
   }
@@ -55,6 +75,13 @@ function emit(event, payload) {
 }
 
 function getRealtimeCapabilities() {
+  if (isServerlessRuntime()) {
+    return {
+      socketIoAvailable: false,
+      sseAvailable: false,
+    };
+  }
+
   return {
     socketIoAvailable,
     sseAvailable: true,

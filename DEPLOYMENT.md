@@ -28,7 +28,7 @@ The app includes [render.yaml](/home/kiptootimothy/teamco/enterprise-pos/render.
 1. Push `enterprise-pos` to GitHub or GitLab.
 2. In Render, create a new Blueprint or Web Service from the repo.
 3. Confirm:
-   - Build command: `npm install`
+   - Build command: `npm install && npm run build`
    - Start command: `npm start`
    - Health check path: `/api/system/health`
 4. Add environment variables from `.env.example`.
@@ -60,13 +60,14 @@ The sample Nginx reverse proxy is at [deploy/nginx/reva-inventory.conf](/home/ki
 
 ```bash
 npm install
+npm run build
 ```
 
 4. Create `.env` using `.env.example`.
 5. Start the app with a process manager such as `pm2`:
 
 ```bash
-pm2 start backend/server.js --name reva-inventory
+pm2 start backend/server.js --name reva-engineering-inventory
 pm2 save
 ```
 
